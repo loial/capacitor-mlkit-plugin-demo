@@ -97,26 +97,41 @@ jobs:
         run: npx ionic capacitor copy ios --no-build
       - name: Update native platform
         run: npx ionic capacitor update ios
-      - name: Build IPA
-        id: ipabuild
+      - name: Build and archive with xcodebuild
+        working-directory: ios
+        run: xcodebuild
+          -workspace App/App.xcworkspace
+          -scheme App
+          -archivePath App/build/App.xarchive
+          clean build archive
+          CODE_SIGN_IDENTITY=""
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED="NO"
+          CODE_SIGN_ENTITLEMENTS=""
+
+      - name: Create unsigned IPA
         working-directory: ios
         run: >
-          curl -s https://raw.githubusercontent.com/loial/_ipabuild/main/ipabuild.sh | bash >> "$GITHUB_OUTPUT"
+          mkdir -p Payload &&
+          cp -r App/build/App.xcarchive/Products/Applications/App.app Payload/ &&
+          zip -r App.ipa Payload/
+    
       - name: Upload IPA
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.ipabuild.outputs.TARGET_NAME }}.ipa
-          path: ${{ steps.ipabuild.outputs.FILENAME }}
+          name: ios
+          path: ios/App.ipa
+      
 
-
-      # - name: Build and archive with xcodebuild
+      # - name: Build IPA
+      #   id: ipabuild
       #   working-directory: ios
-      #   run: xcodebuild
-      #     -workspace App/App.xcworkspace
-      #     -scheme App
-      #     -archivePath App/build/App.xarchive
-      #     clean build archive
-      #     CODE_SIGN_IDENTITY=""
-      #     CODE_SIGNING_REQUIRED=NO
-      #     CODE_SIGNING_ALLOWED="NO"
-      #     CODE_SIGN_ENTITLEMENTS=""
+      #   run: >
+      #     curl -s https://raw.githubusercontent.com/loial/_ipabuild/main/ipabuild.sh | bash >> "$GITHUB_OUTPUT"
+      # - name: Upload IPA
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ${{ steps.ipabuild.outputs.TARGET_NAME }}.ipa
+      #     path: ${{ steps.ipabuild.outputs.FILENAME }}
+
+
