@@ -2,6 +2,17 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Mobile platform to build for'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+
 
 env:
   NODE_VERSION: 16
@@ -28,6 +39,7 @@ jobs:
           name: www
           path: www
   android:
+    if: ${{ contains(fromJSON('["all", "android"]'), inputs.platform) }}
     name: Build Android platform
     runs-on: ubuntu-latest
     needs: [build]
@@ -63,6 +75,7 @@ jobs:
           name: android
           path: android/app/build/outputs/apk/debug
   ios:
+    if: ${{ contains(fromJSON('["all", "ios"]'), inputs.platform) }}
     name: Build iOS platform
     runs-on: macos-latest
     needs: [build]
@@ -84,14 +97,26 @@ jobs:
         run: npx ionic capacitor copy ios --no-build
       - name: Update native platform
         run: npx ionic capacitor update ios
-      - name: Build and archive with xcodebuild
+      - name: Build IPA
+        id: ipabuild
         working-directory: ios
-        run: xcodebuild
-          -workspace App/App.xcworkspace
-          -scheme App
-          -archivePath App/build/App.xarchive
-          clean build archive
-          CODE_SIGN_IDENTITY=""
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGNING_ALLOWED="NO"
-          CODE_SIGN_ENTITLEMENTS=""
+        run: >
+          curl -s https://raw.githubusercontent.com/loial/_ipabuild/main/ipabuild.sh | bash >> "$GITHUB_OUTPUT"
+      - name: Upload IPA
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.ipabuild.outputs.TARGET_NAME }}.ipa
+          path: ${{ steps.ipabuild.outputs.FILENAME }}
+
+
+      # - name: Build and archive with xcodebuild
+      #   working-directory: ios
+      #   run: xcodebuild
+      #     -workspace App/App.xcworkspace
+      #     -scheme App
+      #     -archivePath App/build/App.xarchive
+      #     clean build archive
+      #     CODE_SIGN_IDENTITY=""
+      #     CODE_SIGNING_REQUIRED=NO
+      #     CODE_SIGNING_ALLOWED="NO"
+      #     CODE_SIGN_ENTITLEMENTS=""
