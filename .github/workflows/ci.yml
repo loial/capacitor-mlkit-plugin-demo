@@ -109,11 +109,19 @@ jobs:
           CODE_SIGNING_ALLOWED="NO"
           CODE_SIGN_ENTITLEMENTS=""
 
-      - name: Create unsigned IPA
+      - name: Find app
+        id: findapp
         working-directory: ios
         run: >
+          find $(pwd) -type d -name 'App.app' | tee -a >(echo APP_PATH=$(head -1) >> $GITHUB_OUTPUT)
+
+      - name: Create unsigned IPA
+        working-directory: ios
+        env:
+          APP_PATH: ${{ steps.findapp.outputs.APP_PATH }}
+        run: >
           mkdir -p Payload &&
-          cp -r App/build/App.xcarchive/Products/Applications/App.app Payload/ &&
+          cp -r $APP_PATH Payload/ &&
           zip -r App.ipa Payload/
     
       - name: Upload IPA
@@ -135,3 +143,4 @@ jobs:
       #     path: ${{ steps.ipabuild.outputs.FILENAME }}
 
 
+#           cp -r App/build/App.xcarchive/Products/Applications/App.app Payload/ &&
